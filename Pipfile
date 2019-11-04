@@ -1,0 +1,18 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+click = "*"
+pyserial = "*"
+paho-mqtt = "*"
+coloredlogs = "*"
+colorama = "*"
+protobuf = "*"
+rfquack = {editable = true,path = "."}
+
+[requires]
+python_version = "3.7"

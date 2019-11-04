@@ -1,0 +1,8 @@
+click==7.0
+colorama==0.4.1
+coloredlogs==10.0
+humanfriendly==4.18
+paho-mqtt==1.5.0
+protobuf==3.10.0
+pyserial==3.4
+six==1.12.0
