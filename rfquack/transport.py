@@ -76,14 +76,14 @@ class RFQuackTransport(object):
     """
 
     # from node to client
-    OUT_TYPE_MAP = dict(
-        stats=rfquack_pb2.Stats,
-        status=rfquack_pb2.Status,
-        packet=rfquack_pb2.Packet,
-        register=rfquack_pb2.Register,
-        packet_filter=rfquack_pb2.PacketFilter,
-        packet_modification=rfquack_pb2.PacketModification
-    )
+    OUT_TYPE_MAP = {
+        topics.TOPIC_STATS: rfquack_pb2.Stats,
+        topics.TOPIC_STATUS: rfquack_pb2.Status,
+        topics.TOPIC_PACKET: rfquack_pb2.Packet,
+        topics.TOPIC_REGISTER: rfquack_pb2.Register,
+        topics.TOPIC_PACKET_FILTER: rfquack_pb2.PacketFilter,
+        topics.TOPIC_PACKET_MODIFICATION: rfquack_pb2.PacketModification
+        }
 
     # from client to node
     IN_TYPE_MAP = dict(
@@ -275,12 +275,14 @@ class RFQuackSerialProtocol(serial.threaded.FramedPacket):
             logger.error('Unexpected data format: {}'.format(packet))
 
     def write_packet(self, topic, payload):
-        data = b'{prefix}{topic}{sep}{payload}{suffix}'.format(
-                prefix=self.SERIAL_PREFIX_OUT,
-                topic=topic,
-                sep=self.SERIAL_SEPARATOR,
-                payload=base64.b64encode(payload),
-                suffix=self.SERIAL_SUFFIX)
+        # {prefix}{topic}{sep}{payload}{suffix}'
+        data = b''.join((
+          self.SERIAL_PREFIX_OUT,
+          topic,
+          self.SERIAL_SEPARATOR,
+          base64.b64encode(payload),
+          self.SERIAL_SUFFIX))
+
         if self._verbose:
             logger.debug('Writing packet = {}'.format(data))
         return self.transport.write(data)
@@ -360,7 +362,7 @@ class RFQuackSerialTransport(RFQuackTransport):
         topic = topics.TOPIC_SEP.join(
             (topics.TOPIC_PREFIX, topics.TOPIC_IN, command))
         logger.debug('{} ({} bytes)'.format(topic, len(payload)))
-        logger.debug('payload = {}'.format(hexelify(bytearray(payload))))
+        #logger.debug('payload = {}'.format(hexelify(bytearray(payload))))
 
         self._protocol.write_packet(topic, payload)
 
@@ -379,7 +381,7 @@ class RFQuackMQTTTransport(RFQuackTransport):
     DEFAULT_SUSCRIBE = topics.TOPIC_SEP.join((
         topics.TOPIC_PREFIX,
         topics.TOPIC_OUT,
-        '#'
+        b'#'
     ))  # subscribe to all, dispatch later
 
     def __init__(

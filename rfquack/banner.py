@@ -48,10 +48,10 @@ BANNER = """
         > q.set_modem_config(               # set modem configuration
             modemconfigchoiceindex=0,       # see radiohal documentation
             txpower=14,                     # tx output power in db
-            syncwords=b'\x43\x42',          # sync words
+            syncwords=b'\\x43\\x42',        # sync words
             carrierfreq=433)                # and of course, carrier frequency
 
-        > q.set_packet('\x0d\xa2', 13)      # transmit '0xd 0xa2' 13 times
+        > q.set_packet('\\x0d\\xa2', 13)    # transmit '0xd 0xa2' 13 times
 
         > q.set_modem_config(               # set modem configuration
             modemconfigchoiceindex=0,       # see radiohal documentation

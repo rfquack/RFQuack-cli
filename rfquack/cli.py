@@ -53,7 +53,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
     type=click.Choice(LOG_LEVELS),
     default='DEBUG')
 def cli(loglevel):
-    coloredlogs.install(level=loglevel, logger=logger)
+    coloredlogs.install(level=loglevel)
 
 
 @cli.command()

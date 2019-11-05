@@ -26,6 +26,7 @@ import sys
 import logging
 
 from rfquack import rfquack_pb2
+from rfquack import topics
 
 logger = logging.getLogger('rfquack.core')
 
@@ -125,9 +126,9 @@ class RFQuack(object):
         klass = rfquack_pb2.ModemConfig
         payload = self._make_payload(klass, **fields)
         self._transport._send(
-                command=self._transport.TOPIC_SEP.join((
-                    self._transport.TOPIC_SET,
-                    self._transport.TOPIC_MODEM_CONFIG)),
+                command=topics.TOPIC_SEP.join((
+                    topics.TOPIC_SET,
+                    topics.TOPIC_MODEM_CONFIG)),
                 payload=payload)
 
     def set_mode(self, mode, repeat=0):
@@ -151,9 +152,9 @@ class RFQuack(object):
 
         payload = status.SerializeToString()
         self._transport._send(
-                command=self._transport.TOPIC_SEP.join((
-                    self._transport.TOPIC_SET,
-                    self._transport.TOPIC_STATUS)),
+                command=topics.TOPIC_SEP.join((
+                    topics.TOPIC_SET,
+                    topics.TOPIC_STATUS)),
                 payload=payload)
 
         self._mode = mode
@@ -165,10 +166,10 @@ class RFQuack(object):
         logger.debug('Resetting the radio')
 
         self._transport._send(
-                command=self._transport.TOPIC_SEP.join((
-                    self._transport.TOPIC_SET,
-                    self._transport.TOPIC_RADIO_RESET)),
-                payload='')
+                command=topics.TOPIC_SEP.join((
+                    topics.TOPIC_SET,
+                    topics.TOPIC_RADIO_RESET)),
+                payload=b'')
 
         self._mode = 'IDLE'  # don't send the idle command, just pretend
 
@@ -191,10 +192,10 @@ class RFQuack(object):
         logger.debug('Getting status')
 
         self._transport._send(
-                command=self._transport.TOPIC_SEP.join((
-                    self._transport.TOPIC_GET,
-                    self._transport.TOPIC_STATUS)),
-                payload='')
+                command=topics.TOPIC_SEP.join((
+                    topics.TOPIC_GET,
+                    topics.TOPIC_STATUS)),
+                payload=b'')
 
     def set_register(self, addr, value):
         if not self.ready():
@@ -209,9 +210,9 @@ class RFQuack(object):
 
         payload = register.SerializeToString()
         self._transport._send(
-                command=self._transport.TOPIC_SEP.join((
-                    self._transport.TOPIC_SET,
-                    self._transport.TOPIC_REGISTER)),
+                command=topics.TOPIC_SEP.join((
+                    topics.TOPIC_SET,
+                    topics.TOPIC_REGISTER)),
                 payload=payload)
 
     def get_register(self, addr):
@@ -225,9 +226,9 @@ class RFQuack(object):
 
         payload = register.SerializeToString()
         self._transport._send(
-                command=self._transport.TOPIC_SEP.join((
-                    self._transport.TOPIC_GET,
-                    self._transport.TOPIC_REGISTER)),
+                command=topics.TOPIC_SEP.join((
+                    topics.TOPIC_GET,
+                    topics.TOPIC_REGISTER)),
                 payload=payload)
 
     def set_packet(self, data, repeat=1, delayMs=None):
@@ -247,9 +248,9 @@ class RFQuack(object):
 
         payload = packet.SerializeToString()
         self._transport._send(
-                command=self._transport.TOPIC_SEP.join((
-                    self._transport.TOPIC_SET,
-                    self._transport.TOPIC_PACKET)),
+                command=topics.TOPIC_SEP.join((
+                    topics.TOPIC_SET,
+                    topics.TOPIC_PACKET)),
                 payload=payload)
 
     send = set_packet
@@ -259,15 +260,15 @@ class RFQuack(object):
         Reset any packet modification.
         """
         if not self.ready():
-          return
+            return
 
         logger.debug('Resetting packet modifications')
 
         self._transport._send(
-                command=self._transport.TOPIC_SEP.join((
-                    self._transport.TOPIC_SET,
-                    self._transport.TOPIC_PACKET_MODIFICATION)),
-                payload='')
+                command=topics.TOPIC_SEP.join((
+                    topics.TOPIC_SET,
+                    topics.TOPIC_PACKET_MODIFICATION)),
+                payload=b'')
 
     def get_packet_modifications(self):
         """
@@ -277,18 +278,18 @@ class RFQuack(object):
             return
 
         self._transport._send(
-                command=self._transport.TOPIC_SEP.join((
-                    self._transport.TOPIC_GET,
-                    self._transport.TOPIC_PACKET_MODIFICATION)),
-                payload='')
+                command=topics.TOPIC_SEP.join((
+                    topics.TOPIC_GET,
+                    topics.TOPIC_PACKET_MODIFICATION)),
+                payload=b'')
 
     def add_packet_modification(self, **fields):
         klass = rfquack_pb2.PacketModification
         payload = self._make_payload(klass, **fields)
         self._transport._send(
-                command=self._transport.TOPIC_SEP.join((
-                    self._transport.TOPIC_SET,
-                    self._transport.TOPIC_PACKET_MODIFICATION)),
+                command=topics.TOPIC_SEP.join((
+                    topics.TOPIC_SET,
+                    topics.TOPIC_PACKET_MODIFICATION)),
                 payload=payload)
 
     def reset_packet_filters(self):
@@ -301,10 +302,10 @@ class RFQuack(object):
         logger.debug('Resetting packet filters')
 
         self._transport._send(
-                command=self._transport.TOPIC_SEP.join((
-                    self._transport.TOPIC_SET,
-                    self._transport.TOPIC_PACKET_FILTER)),
-                payload='')
+                command=topics.TOPIC_SEP.join((
+                    topics.TOPIC_SET,
+                    topics.TOPIC_PACKET_FILTER)),
+                payload=b'')
 
     def get_packet_filters(self):
         """
@@ -314,25 +315,25 @@ class RFQuack(object):
             return
 
         self._transport._send(
-                command=self._transport.TOPIC_SEP.join((
-                    self._transport.TOPIC_GET,
-                    self._transport.TOPIC_PACKET_FILTER)),
-                payload='')
+                command=topics.TOPIC_SEP.join((
+                    topics.TOPIC_GET,
+                    topics.TOPIC_PACKET_FILTER)),
+                payload=b'')
 
     def add_packet_filter(self, **fields):
         klass = rfquack_pb2.PacketFilter
         payload = self._make_payload(klass, **fields)
         self._transport._send(
-                command=self._transport.TOPIC_SEP.join((
-                    self._transport.TOPIC_SET,
-                    self._transport.TOPIC_PACKET_FILTER)),
+                command=topics.TOPIC_SEP.join((
+                    topics.TOPIC_SET,
+                    topics.TOPIC_PACKET_FILTER)),
                 payload=payload)
 
     def set_packet_format(self, **fields):
         klass = rfquack_pb2.PacketFormat
         payload = self._make_payload(klass, **fields)
         self._transport._send(
-                command=self._transport.TOPIC_SEP.join((
-                    self._transport.TOPIC_SET,
-                    self._transport.TOPIC_PACKET_FORMAT)),
+                command=topics.TOPIC_SEP.join((
+                    topics.TOPIC_SET,
+                    topics.TOPIC_PACKET_FORMAT)),
                 payload=payload)
