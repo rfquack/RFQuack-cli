@@ -13,6 +13,7 @@ coloredlogs = "*"
 colorama = "*"
 protobuf = "*"
 rfquack = {editable = true,path = "."}
+ipython = "*"
 
 [requires]
 python_version = "3.7"
