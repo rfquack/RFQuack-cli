@@ -16,4 +16,4 @@ rfquack = {editable = true,path = "."}
 ipython = "*"
 
 [requires]
-python_version = "3.7"
+python_version = "3.8"

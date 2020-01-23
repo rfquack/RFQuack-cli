@@ -128,6 +128,7 @@ class RFQuack(object):
         self._transport._send(
                 command=topics.TOPIC_SEP.join((
                     topics.TOPIC_SET,
+                    topics.TOPIC_MODULE_DRIVER,
                     topics.TOPIC_MODEM_CONFIG)),
                 payload=payload)
 
@@ -154,7 +155,9 @@ class RFQuack(object):
         self._transport._send(
                 command=topics.TOPIC_SEP.join((
                     topics.TOPIC_SET,
-                    topics.TOPIC_STATUS)),
+                    topics.TOPIC_MODULE_DRIVER,
+                    topics.TOPIC_STATUS,
+                )),
                 payload=payload)
 
         self._mode = mode
@@ -167,8 +170,9 @@ class RFQuack(object):
 
         self._transport._send(
                 command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_SET,
-                    topics.TOPIC_RADIO_RESET)),
+                    topics.TOPIC_UNSET,
+                    topics.TOPIC_MODULE_DRIVER,
+                    topics.TOPIC_MODEM_CONFIG)),
                 payload=b'')
 
         self._mode = 'IDLE'  # don't send the idle command, just pretend
@@ -193,8 +197,9 @@ class RFQuack(object):
 
         self._transport._send(
                 command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_GET,
-                    topics.TOPIC_STATUS)),
+                    topics.TOPIC_UNSET,
+                    topics.TOPIC_MODULE_DRIVER,
+                    topics.TOPIC_MODEM_CONFIG)),
                 payload=b'')
 
     def set_register(self, addr, value):
@@ -212,6 +217,7 @@ class RFQuack(object):
         self._transport._send(
                 command=topics.TOPIC_SEP.join((
                     topics.TOPIC_SET,
+                    topics.TOPIC_MODULE_DRIVER,
                     topics.TOPIC_REGISTER)),
                 payload=payload)
 
@@ -228,6 +234,7 @@ class RFQuack(object):
         self._transport._send(
                 command=topics.TOPIC_SEP.join((
                     topics.TOPIC_GET,
+                    topics.TOPIC_MODULE_DRIVER,
                     topics.TOPIC_REGISTER)),
                 payload=payload)
 
@@ -250,6 +257,7 @@ class RFQuack(object):
         self._transport._send(
                 command=topics.TOPIC_SEP.join((
                     topics.TOPIC_SET,
+                    topics.TOPIC_MODULE_DRIVER,
                     topics.TOPIC_PACKET)),
                 payload=payload)
 
@@ -266,8 +274,10 @@ class RFQuack(object):
 
         self._transport._send(
                 command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_SET,
-                    topics.TOPIC_PACKET_MODIFICATION)),
+                    topics.TOPIC_UNSET,
+                    topics.TOPIC_MODULE_PACKET_MODIFICATION,
+                    topics.TOPIC_RULES
+                )),
                 payload=b'')
 
     def get_packet_modifications(self):
@@ -280,7 +290,9 @@ class RFQuack(object):
         self._transport._send(
                 command=topics.TOPIC_SEP.join((
                     topics.TOPIC_GET,
-                    topics.TOPIC_PACKET_MODIFICATION)),
+                    topics.TOPIC_MODULE_PACKET_MODIFICATION,
+                    topics.TOPIC_RULES
+                )),
                 payload=b'')
 
     def add_packet_modification(self, **fields):
@@ -289,7 +301,9 @@ class RFQuack(object):
         self._transport._send(
                 command=topics.TOPIC_SEP.join((
                     topics.TOPIC_SET,
-                    topics.TOPIC_PACKET_MODIFICATION)),
+                    topics.TOPIC_MODULE_PACKET_MODIFICATION,
+                    topics.TOPIC_RULES
+                )),
                 payload=payload)
 
     def reset_packet_filters(self):
@@ -303,8 +317,10 @@ class RFQuack(object):
 
         self._transport._send(
                 command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_SET,
-                    topics.TOPIC_PACKET_FILTER)),
+                    topics.TOPIC_UNSET,
+                    topics.TOPIC_MODULE_PACKET_FILTER,
+                    topics.TOPIC_RULES
+                )),
                 payload=b'')
 
     def get_packet_filters(self):
@@ -317,7 +333,9 @@ class RFQuack(object):
         self._transport._send(
                 command=topics.TOPIC_SEP.join((
                     topics.TOPIC_GET,
-                    topics.TOPIC_PACKET_FILTER)),
+                    topics.TOPIC_MODULE_PACKET_FILTER,
+                    topics.TOPIC_RULES
+                )),
                 payload=b'')
 
     def add_packet_filter(self, **fields):
@@ -326,7 +344,9 @@ class RFQuack(object):
         self._transport._send(
                 command=topics.TOPIC_SEP.join((
                     topics.TOPIC_SET,
-                    topics.TOPIC_PACKET_FILTER)),
+                    topics.TOPIC_MODULE_PACKET_FILTER,
+                    topics.TOPIC_RULES
+                )),
                 payload=payload)
 
     def set_packet_format(self, **fields):

@@ -22,19 +22,27 @@ this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
 Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
+"""
+    Modules
+"""
+TOPIC_MODULE_DRIVER = b"driver"
+TOPIC_MODULE_PACKET_MODIFICATION = b"packet_modification"
+TOPIC_MODULE_PACKET_FILTER = b"packet_filter"
+
+
 TOPIC_PREFIX = b"rfquack"
 TOPIC_SEP = b"/"
 TOPIC_IN = b"in"
 TOPIC_OUT = b"out"
 TOPIC_GET = b"get"
 TOPIC_SET = b"set"
+TOPIC_UNSET = b"unset"
 TOPIC_STATS = b"stats"
 TOPIC_STATUS = b"status"
+TOPIC_RULES = b"rules"
 TOPIC_MODEM_CONFIG = b"modem_config"
 TOPIC_PACKET = b"packet"
 TOPIC_MODE = b"mode"
 TOPIC_REGISTER = b"register"
-TOPIC_PACKET_MODIFICATION = b"packet_modification"
 TOPIC_PACKET_FORMAT = b"packet_format"
-TOPIC_PACKET_FILTER = b"packet_filter"
 TOPIC_RADIO_RESET = b"radio_reset"

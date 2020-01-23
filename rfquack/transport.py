@@ -52,7 +52,7 @@ class RFQuackTransport(object):
     implementation of the RFQuack transport is on top of MQTT. Each topic is
     like a path, formed by three parts, split by a separator, usually a slash.
 
-        <prefix>/<way>/<set|get>/<command>
+        <prefix>/<way>/<set|get|unset>/<module_name>/<arg0>/<arg1>/...
 
     The <prefix> (e.g., rfquack) is used to distinguis correct messages.
 
@@ -64,15 +64,18 @@ class RFQuackTransport(object):
     The <get|set> part indicates whether a message is intended to set or get a
     value. The semantic of this part is implemented in the RFQuack firmware.
     For example, if we need to set a register to a value, we will use a topic
-    such as 'rfquack/in/set/<command>'.
+    such as 'rfquack/in/set/<module_name>/<arg0>'.
 
-    The command must be the last part, and tells what command is carried by the
-    message. Following the above example: 'rfquack/in/set/register'
+    The module name indicates which module should handle the command.
+    For example: 'rfquack/in/set/radio/<arg0>'
 
-    Once a messaage is received, it is dispatched to the correct handler,
+    The args are optional and must be the last part, they add arguments
+    to the message.
+    Following the above example: 'rfquack/in/set/radio/power'
+
+    Once a messaage is received, it is dispatched to the correct module,
     together with its payload, which must be deserialized according to the
-    right Protobuf message class. An easy way is to map each <command> to a
-    distinct Protobuf message class.
+    right Protobuf message class.
     """
 
     # from node to client
@@ -81,8 +84,8 @@ class RFQuackTransport(object):
         topics.TOPIC_STATUS: rfquack_pb2.Status,
         topics.TOPIC_PACKET: rfquack_pb2.Packet,
         topics.TOPIC_REGISTER: rfquack_pb2.Register,
-        topics.TOPIC_PACKET_FILTER: rfquack_pb2.PacketFilter,
-        topics.TOPIC_PACKET_MODIFICATION: rfquack_pb2.PacketModification
+        topics.TOPIC_MODULE_PACKET_FILTER: rfquack_pb2.PacketFilter,
+        topics.TOPIC_MODULE_PACKET_MODIFICATION: rfquack_pb2.PacketModification
         }
 
     # from client to node
