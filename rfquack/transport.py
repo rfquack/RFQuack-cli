@@ -78,21 +78,6 @@ class RFQuackTransport(object):
     right Protobuf message class.
     """
 
-    # from node to client
-    OUT_TYPE_MAP = {
-        topics.TOPIC_STATS: rfquack_pb2.Stats,
-        topics.TOPIC_STATUS: rfquack_pb2.Status,
-        topics.TOPIC_PACKET: rfquack_pb2.Packet,
-        topics.TOPIC_REGISTER: rfquack_pb2.Register,
-        topics.TOPIC_MODULE_PACKET_FILTER: rfquack_pb2.PacketFilter,
-        topics.TOPIC_MODULE_PACKET_MODIFICATION: rfquack_pb2.PacketModification
-        }
-
-    # from client to node
-    IN_TYPE_MAP = dict(
-        packet=rfquack_pb2.Packet
-    )
-
     def __init__(self, *args, **kwargs):
         raise NotImplementedError('You must override the constructor')
 
@@ -101,39 +86,40 @@ class RFQuackTransport(object):
 
     def _message_parser(self, topic, payload):
         try:
-            prefix, way, cmd = topic.split(topics.TOPIC_SEP)
+            prefix, way, verb, module_name, message_type, *cmds = topic.split(topics.TOPIC_SEP)
         except Exception:
-            logger.warning('Cannot parse topic: must be <prefix>/<way>/<cmd>')
+            logger.warning('Cannot parse topic: must be <prefix>/<way>/<verb>/<module_name>/<message_type>(/<cmd>)+')
             return
 
-        logger.debug('Message on topic "{}"'.format(topic))
+        logger.debug('Message from module "{}"'.format(module_name))
 
         if prefix != topics.TOPIC_PREFIX:
             logger.warning(
                 'Invalid prefix: {} should be {}'
-                .format(prefix, topics.TOPIC_PREFIX))
+                    .format(prefix, topics.TOPIC_PREFIX))
             return
 
         if way != topics.TOPIC_OUT:
             return
 
-        klass = self.OUT_TYPE_MAP.get(cmd, None)
+        # Retrive protobuf class name by stripping 'rfquack_' prefix from message_type
+        klass = rfquack_pb2.__dict__.get(message_type[8:].decode(), None)
 
         if klass is None:
             logger.warning(
-                'Ignoring "{}": doesn\'t match any known command'.format(cmd))
+                'Ignoring "{}": doesn\'t match any known protobuf class'.format(message_type[8:]))
             return
 
         pb_msg = klass()
         try:
             pb_msg.ParseFromString(payload)
-            logger.debug('{} -> {}: {}'.format(topic, klass, str(pb_msg)))
         except Exception as e:
             logger.error('Cannot deserialize data: {}'.format(e))
             return
 
         if self._on_message_callback:
-            self._on_message_callback(cmd=cmd, msg=pb_msg)
+            self._on_message_callback(verb=verb.decode(), module_name=module_name.decode(),
+                                      cmds=list(map(lambda x: x.decode(), cmds)), msg=pb_msg)
 
     def _send(self, command, payload):
         raise NotImplementedError()
@@ -170,7 +156,7 @@ class RFQuackSerialProtocol(serial.threaded.FramedPacket):
     Assumption: there's nothing else on the serial bus.
 
     """
-    SERIAL_PREFIX_IN = b'<'   # packet for us
+    SERIAL_PREFIX_IN = b'<'  # packet for us
     SERIAL_PREFIX_OUT = b'>'  # packet for the dongle
     SERIAL_SUFFIX = b'\0'
     SERIAL_SEPARATOR = b'~'
@@ -264,27 +250,28 @@ class RFQuackSerialProtocol(serial.threaded.FramedPacket):
             payload = base64.b64decode(payload_b64)
 
             logger.debug(
-                    '{} bytes received on topic: "{}" = "{}"'.format(
-                        len(payload),
-                        topic,
-                        binascii.hexlify(payload)))
+                '{} bytes received on topic: "{}" = "{}"'.format(
+                    len(payload),
+                    topic,
+                    binascii.hexlify(payload)))
 
             if self.callback:
-                try:
-                    self.callback(topic, payload)
-                except Exception as e:
-                    logger.error('Cannot parse message: {}'.format(e))
+                self.callback(topic, payload)
+                # try:
+                #    self.callback(topic, payload)
+                # except Exception as e:
+                #    logger.error('Cannot parse message: {}'.format(e))
         else:
             logger.error('Unexpected data format: {}'.format(packet))
 
     def write_packet(self, topic, payload):
         # {prefix}{topic}{sep}{payload}{suffix}'
         data = b''.join((
-          self.SERIAL_PREFIX_OUT,
-          topic,
-          self.SERIAL_SEPARATOR,
-          base64.b64encode(payload),
-          self.SERIAL_SUFFIX))
+            self.SERIAL_PREFIX_OUT,
+            topic,
+            self.SERIAL_SEPARATOR,
+            base64.b64encode(payload),
+            self.SERIAL_SUFFIX))
 
         if self._verbose:
             logger.debug('Writing packet = {}'.format(data))
@@ -298,14 +285,14 @@ class RFQuackSerialProtocol(serial.threaded.FramedPacket):
         for tok in self.SERIAL_LOG_TOKENS:
             if tok in self.line and \
                     self.line.endswith(self.SERIAL_LOG_NEWLINE):
-                        s = self.line.index(tok)
-                        self.handle_log(bytes(self.line[s:]))
-                        self.line = bytearray()
+                s = self.line.index(tok)
+                self.handle_log(bytes(self.line[s:]))
+                self.line = bytearray()
 
     def handle_log(self, line):
         # TODO find the right way to print in IPython
         if self._verbose:
-            print('\033[94m' + line,)
+            print('\033[94m' + line, )
 
 
 class RFQuackSerialTransport(RFQuackTransport):
@@ -337,8 +324,8 @@ class RFQuackSerialTransport(RFQuackTransport):
             callback = self._on_message
 
         self._reader = serial.threaded.ReaderThread(
-                self.ser,
-                _RFQuackSerialProtocol)
+            self.ser,
+            _RFQuackSerialProtocol)
 
         self._reader.start()
         self._transport, self._protocol = self._reader.connect()
@@ -365,7 +352,7 @@ class RFQuackSerialTransport(RFQuackTransport):
         topic = topics.TOPIC_SEP.join(
             (topics.TOPIC_PREFIX, topics.TOPIC_IN, command))
         logger.debug('{} ({} bytes)'.format(topic, len(payload)))
-        #logger.debug('payload = {}'.format(hexelify(bytearray(payload))))
+        # logger.debug('payload = {}'.format(hexelify(bytearray(payload))))
 
         self._protocol.write_packet(topic, payload)
 
@@ -398,8 +385,8 @@ class RFQuackMQTTTransport(RFQuackTransport):
             host=host,
             port=port)
         self._client = paho_mqtt.Client(
-                client_id=client_id,
-                userdata=self._userdata)
+            client_id=client_id,
+            userdata=self._userdata)
         self._ready = False
         self._on_packet = None
 

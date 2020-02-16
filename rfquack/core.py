@@ -27,8 +27,112 @@ import logging
 
 from rfquack import rfquack_pb2
 from rfquack import topics
+from google.protobuf.message import Message
 
 logger = logging.getLogger('rfquack.core')
+
+
+class ModuleInterface(object):
+    def __init__(self, rfq, module_name):
+        self.__dict__['_rfquack'] = rfq
+        self.__dict__['_module_name'] = module_name
+        self.__dict__['_help'] = dict()
+
+    def _set_autocompletion(self, cmd_name, cmd_type, argument_type, description):
+        self._help[cmd_name] = dict(cmd_type=cmd_type, argument_type=argument_type, description=description)
+        rfq = self._rfquack
+
+        if cmd_type == rfquack_pb2.CmdInfo.CmdTypeEnum.METHOD:
+            # Add the method.
+            if argument_type == "rfquack_VoidValue":
+                # Create a void method
+                self.__dict__[cmd_name] = lambda: rfq._set_module_value(self._module_name, cmd_name,
+                                                                        rfquack_pb2.VoidValue())
+            else:
+                protobuf_type = getattr(rfquack_pb2, argument_type[8:])  # Strip initial rfquack_
+
+                # If specified type has a single field named "value", directly assign the passed argument to it.
+                if len(protobuf_type.DESCRIPTOR.fields_by_name) == 1 and \
+                        "value" in protobuf_type.DESCRIPTOR.fields_by_name:
+
+                    self.__dict__[cmd_name] = lambda x: rfq._set_module_value(self._module_name, cmd_name,
+                                                                              self._parse_attribute(x, protobuf_type))
+                else:
+                    self.__dict__[cmd_name] = lambda **x: rfq._set_module_value(self._module_name, cmd_name,
+                                                                                self._parse_attribute(x, protobuf_type))
+
+            # Create a method accepting an argument:
+
+            logger.debug("q.{}.{}() created.".format(self._module_name, cmd_name))
+            return
+
+    def __dir__(self):
+        return list(self._help.keys()) + ["help"]
+
+    def help(self):
+        sys.stdout.write('\n')
+        sys.stdout.write("Helper for '{}':\n\n".format(self._module_name))
+        for cmd_name in self._help:
+            cmd = self._help[cmd_name]
+
+            # Print full command and its type (method/attribute)
+            sys.stdout.write("> q.{}.{}".format(self._module_name, cmd_name))
+            if cmd["cmd_type"] == rfquack_pb2.CmdInfo.CmdTypeEnum.METHOD:
+                sys.stdout.write("()")
+            sys.stdout.write("\n")
+
+            # Print the description
+            sys.stdout.write("Accepts: {}\n".format(cmd["argument_type"]))
+            sys.stdout.write(cmd["description"])
+            sys.stdout.write("\n\n")
+
+    def _parse_attribute(self, value, type):
+        rfq = self._rfquack
+
+        # None value is mapped to rfquack_VoidValue
+        if value is None:
+            return rfquack_pb2.VoidValue()
+
+        # First check if the attribute we want to set is a primitive type.
+        if isinstance(value, (bool, int, float)):
+            return rfq._make_payload(type, value=value)
+
+        # If attribute is a Protubuf object we assume user knows what he's doing.
+        if isinstance(value, Message):
+            return value
+
+        # If attribute is a dict try to parse it.
+        if isinstance(value, dict):
+            return rfq._make_payload(type, **value)
+
+        raise Exception("Don't know how to parse the input")
+
+    def __setattr__(self, attr_name, value):
+
+        if attr_name not in self._help.keys():
+            self.help()
+            return "'{}' not found".format(attr_name)
+
+        rfq = self._rfquack
+        module_name = self._module_name
+
+        try:
+            protobuf_type = getattr(rfquack_pb2, self._help[attr_name]['argument_type'][8:])  # Strip initial rfquack_
+            rfq._set_module_value(module_name, attr_name, self._parse_attribute(value, protobuf_type))
+        except Exception as error:
+            logger.error("{}".format(error))
+
+    def __getattr__(self, attr_name):
+        # Ignore when IPython tries to probe our methods.
+        if attr_name in ("_ipython_canary_method_should_not_exist_", "_repr_mimebundle_"):
+            return None
+
+        if attr_name not in self._help.keys():
+            self._print_help()
+            return "'{}' not found".format(attr_name)
+
+        rfq = self._rfquack
+        return rfq._get_module_value(self._module_name, attr_name)
 
 
 class RFQuack(object):
@@ -38,42 +142,60 @@ class RFQuack(object):
     """
 
     def __init__(self, transport, shell):
-        self._mode = 'IDLE'
-        self._ready = False
         self._transport = transport
         self._shell = shell
 
-        self.data = {}
-
+        self.data = list()
+        self.lastReply = {}
         self._init()
 
     def _init(self):
-        """
-        - reset packet modifications
-        - put the tool in sending mode
-        """
         self._transport.init(on_message_callback=self._recv)
 
-    def _recv(self, *args, **kwargs):
-        cmd = kwargs.get('cmd')
-        msg = kwargs.get('msg')
+        # Ask RFQuack info about its configuration.
+        self._transport._send(
+            command=topics.TOPIC_INFO,
+            payload=b'')
 
-        if cmd in self.data:
-            self.data[cmd].append(msg)
-        else:
-            self.data[cmd] = [msg]
+    def _recv(self, **kwargs):
+        verb = kwargs.get('verb')
+        module_name = kwargs.get('module_name')
+        cmds = kwargs.get('cmds')
+        msg = kwargs.get('msg')
 
         out = ''
 
-        # suppress output for certain data
-        if not isinstance(msg, rfquack_pb2.Packet):
-            out = str(msg)
+        # Incoming autocompletion data
+        if verb == topics.TOPIC_INFO.decode():
+            # Create a new attribute if missing.
+            if not hasattr(self, module_name):
+                logger.info("Creating attribute q.{}".format(module_name))
+                setattr(self, module_name, ModuleInterface(self, module_name))
 
-        # type-specific output
+            getattr(self, module_name)._set_autocompletion(cmds[0], msg.cmdType, msg.argumentType, msg.description)
+            return
+
+        # Store received reply.
+        self.lastReply = msg
+
+        # Print to screen incoming data
+        if hasattr(msg, "DESCRIPTOR"):
+            for field in list(msg.DESCRIPTOR.fields_by_name):
+                out += "{} = {}\n".format(field, getattr(msg, field))
+        else:
+            out = "Don't know ho to serialize to CLI"
+
+        # Type-specific output
+        # Parse register info:
         if isinstance(msg, rfquack_pb2.Register):
-            fmt = '0x{addr:02X} = 0b{value:08b} (0x{value:02X}, {value})'
-            out = fmt.format(
-                    **dict(addr=msg.address, value=msg.value))
+            fmt = '0x{addr:02X} = 0b{value:08b} (0x{value:02X}, {value})\n'
+            out += fmt.format(
+                **dict(addr=msg.address, value=msg.value))
+
+        # Parse and store incoming packet:
+        if isinstance(msg, rfquack_pb2.Packet):
+            out += "hex data = {}\n".format(msg.data.hex())
+            self.data.append(msg)
 
         if out:
             sys.stdout.write('\n')
@@ -105,255 +227,45 @@ class RFQuack(object):
         for name, value in fields.items():
             if name not in fieldNames:
                 logger.warning(
-                        'Skipping {} as it does not belong to: {}'.format(
-                            name, fieldNames))
+                    'Skipping {} as it does not belong to: {}'.format(
+                        name, fieldNames))
                 continue
             try:
-                setattr(obj, name, value)
-                logger.info('{} = {}'.format(name, value))
+                enum_type = klass.DESCRIPTOR.fields_by_camelcase_name[name].enum_type;
+                if enum_type is None:
+                    setattr(obj, name, value)
+                    logger.info('{} = {}'.format(name, value))
+                else:
+                    if value in enum_type.values_by_name:
+                        setattr(obj, name, enum_type.values_by_name[value].number)
+                        logger.info('{} = {}'.format(name, value))
+                    else:
+                        logger.error("{} must be one of {}".format(name, ", ".join(enum_type.values_by_name.keys())))
             except TypeError as e:
                 logger.error('Wrong type for {}: {}'.format(name, e))
             except Exception as e:
                 logger.error('Cannot set field {}: {}'.format(name, e))
 
-        payload = obj.SerializeToString()
+        return obj
 
-        logger.debug("Payload = {}".format(payload))
-
-        return payload
-
-    def set_modem_config(self, **fields):
-        klass = rfquack_pb2.ModemConfig
-        payload = self._make_payload(klass, **fields)
-        self._transport._send(
-                command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_SET,
-                    topics.TOPIC_MODULE_DRIVER,
-                    topics.TOPIC_MODEM_CONFIG)),
-                payload=payload)
-
-    def set_mode(self, mode, repeat=0):
+    def _send_module_cmd(self, message, module_name, verb, *args):
         if not self.ready():
             return
 
-        logger.debug('Setting mode to {}'.format(mode))
+        topic_parts = [verb.encode(), module_name.encode()]
+        topic_parts += list(map(lambda x: x.encode(), args))
 
-        try:
-            rfquack_pb2.Mode.Value(mode)
-        except ValueError:
-            logger.warning(
-                'No such mode "{}": '
-                'please select any of {}'.
-                format(mode, rfquack_pb2.Mode.keys()))
-            return
-
-        status = rfquack_pb2.Status()
-        status.mode = rfquack_pb2.Mode.Value(mode)
-        status.tx_repeat_default = repeat
-
-        payload = status.SerializeToString()
-        self._transport._send(
-                command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_SET,
-                    topics.TOPIC_MODULE_DRIVER,
-                    topics.TOPIC_STATUS,
-                )),
-                payload=payload)
-
-        self._mode = mode
-
-    def reset(self):
-        if not self.ready():
-            return
-
-        logger.debug('Resetting the radio')
+        payload = message.SerializeToString()
 
         self._transport._send(
-                command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_UNSET,
-                    topics.TOPIC_MODULE_DRIVER,
-                    topics.TOPIC_MODEM_CONFIG)),
-                payload=b'')
+            command=topics.TOPIC_SEP.join(topic_parts),
+            payload=payload)
 
-        self._mode = 'IDLE'  # don't send the idle command, just pretend
+    def _set_module_value(self, module_name, cmd_name, message):
+        # In module's protobuf the protobuf classes are prepended by 'rfquack_'. Let's add it.
+        message_type = "rfquack_{}".format(message.DESCRIPTOR.name)
 
-    def rx(self):
-        self.set_mode('RX')
+        self._send_module_cmd(message, module_name, topics.TOPIC_SET.decode(), message_type, cmd_name, )
 
-    def tx(self):
-        self.set_mode('TX')
-
-    def idle(self):
-        self.set_mode('IDLE')
-
-    def repeat(self, repeat=0):
-        self.set_mode('REPEAT', repeat)
-
-    def get_status(self):
-        if not self.ready():
-            return
-
-        logger.debug('Getting status')
-
-        self._transport._send(
-                command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_UNSET,
-                    topics.TOPIC_MODULE_DRIVER,
-                    topics.TOPIC_MODEM_CONFIG)),
-                payload=b'')
-
-    def set_register(self, addr, value):
-        if not self.ready():
-            return
-
-        logger.debug('Setting value of register 0x{:02X} = 0b{:08b}'.format(
-            addr, value))
-
-        register = rfquack_pb2.Register()
-        register.address = addr
-        register.value = value
-
-        payload = register.SerializeToString()
-        self._transport._send(
-                command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_SET,
-                    topics.TOPIC_MODULE_DRIVER,
-                    topics.TOPIC_REGISTER)),
-                payload=payload)
-
-    def get_register(self, addr):
-        if not self.ready():
-            return
-
-        logger.debug('Getting value of register 0x{:02X}'.format(addr))
-
-        register = rfquack_pb2.Register()
-        register.address = addr
-
-        payload = register.SerializeToString()
-        self._transport._send(
-                command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_GET,
-                    topics.TOPIC_MODULE_DRIVER,
-                    topics.TOPIC_REGISTER)),
-                payload=payload)
-
-    def set_packet(self, data, repeat=1, delayMs=None):
-        if not self.ready():
-            return
-
-        packet = rfquack_pb2.Packet()
-        packet.data = data
-
-        if isinstance(delayMs, int):
-            packet.delayMs = delayMs
-
-        try:
-            packet.repeat = int(repeat)
-        except Exception as e:
-            logger.warning('Cannot set repeat of packet: {}'.format(e))
-
-        payload = packet.SerializeToString()
-        self._transport._send(
-                command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_SET,
-                    topics.TOPIC_MODULE_DRIVER,
-                    topics.TOPIC_PACKET)),
-                payload=payload)
-
-    send = set_packet
-
-    def reset_packet_modifications(self):
-        """
-        Reset any packet modification.
-        """
-        if not self.ready():
-            return
-
-        logger.debug('Resetting packet modifications')
-
-        self._transport._send(
-                command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_UNSET,
-                    topics.TOPIC_MODULE_PACKET_MODIFICATION,
-                    topics.TOPIC_RULES
-                )),
-                payload=b'')
-
-    def get_packet_modifications(self):
-        """
-        Get list of packet modifications
-        """
-        if not self.ready():
-            return
-
-        self._transport._send(
-                command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_GET,
-                    topics.TOPIC_MODULE_PACKET_MODIFICATION,
-                    topics.TOPIC_RULES
-                )),
-                payload=b'')
-
-    def add_packet_modification(self, **fields):
-        klass = rfquack_pb2.PacketModification
-        payload = self._make_payload(klass, **fields)
-        self._transport._send(
-                command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_SET,
-                    topics.TOPIC_MODULE_PACKET_MODIFICATION,
-                    topics.TOPIC_RULES
-                )),
-                payload=payload)
-
-    def reset_packet_filters(self):
-        """
-        Reset any packet filter.
-        """
-        if not self.ready():
-            return
-
-        logger.debug('Resetting packet filters')
-
-        self._transport._send(
-                command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_UNSET,
-                    topics.TOPIC_MODULE_PACKET_FILTER,
-                    topics.TOPIC_RULES
-                )),
-                payload=b'')
-
-    def get_packet_filters(self):
-        """
-        Get list of packet filters
-        """
-        if not self.ready():
-            return
-
-        self._transport._send(
-                command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_GET,
-                    topics.TOPIC_MODULE_PACKET_FILTER,
-                    topics.TOPIC_RULES
-                )),
-                payload=b'')
-
-    def add_packet_filter(self, **fields):
-        klass = rfquack_pb2.PacketFilter
-        payload = self._make_payload(klass, **fields)
-        self._transport._send(
-                command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_SET,
-                    topics.TOPIC_MODULE_PACKET_FILTER,
-                    topics.TOPIC_RULES
-                )),
-                payload=payload)
-
-    def set_packet_format(self, **fields):
-        klass = rfquack_pb2.PacketFormat
-        payload = self._make_payload(klass, **fields)
-        self._transport._send(
-                command=topics.TOPIC_SEP.join((
-                    topics.TOPIC_SET,
-                    topics.TOPIC_PACKET_FORMAT)),
-                payload=payload)
+    def _get_module_value(self, module_name, attrName):
+        self._send_module_cmd(rfquack_pb2.VoidValue(), module_name, topics.TOPIC_GET.decode(), attrName)

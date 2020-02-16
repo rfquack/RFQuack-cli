@@ -1,7 +1,31 @@
 # RFQuack Command Line Interface Client
 Command line interface client to [RFQuack](https://github.com/trendmicro/RFQuack) dongles.
 
-# Install
+## Installation
+RFQuack-cli can be used as a __docker container__ or __installed__
+
+### Docker
+First you need to clone the repo and build the container.
+```bash
+$ git clone https://github.com/rfquack/RFQuack-cli
+$ cd RFQuack-cli
+$ docker build -t rfquack-cli .
+```
+
+Then you can connect to any WiFi dongle:
+```bash
+$ docker run --rm -it rfquack-cli rfquack mqtt -H localhost -P 1884
+```
+
+or USB connected dongle:
+```bash
+$ docker run --device /dev/ttyUSB0 --user=root --rm -it rfquack-cli rfquack tty -P /dev/ttyUSB0
+```
+
+
+
+
+### System install
 ```bash
 $ git clone https://github.com/rfquack/RFQuack-cli
 $ cd RFQuack-cli
@@ -9,24 +33,25 @@ $ python setup.py install
 ```
 If you use [pipenv](https://pipenv.org) you can just `pipenv install -e .`.
 
-# Usage
+
+# Basic usage
 ```bash
 $ rfquack --help                      
 Usage: rfq.py [OPTIONS] COMMAND [ARGS]...                                
-                                                                         
+
 Options:                                                                 
   -l, --loglevel [CRITICAL|ERROR|WARNING|INFO|DEBUG|NOTSET]              
   --help                          Show this message and exit.            
-                                                                         
+
 Commands:                                                                
   mqtt  RFQuack client with MQTT transport.                              
   tty   RFQuack client with serial transport.                            
 
 $ rfquack mqtt --help                 
 Usage: rfq.py mqtt [OPTIONS]                                             
-                                                                         
+
   RFQuack client with MQTT transport. Assumes one dongle per MQTT broker.
-                                                                         
+
 Options:                                                                 
   -i, --client_id TEXT                                                   
   -H, --host TEXT                                                        
@@ -37,9 +62,9 @@ Options:
 
 $ rfquack tty --help                  
 Usage: rfq.py tty [OPTIONS]                                              
-                                                                         
+
   RFQuack client with serial transport.                                  
-                                                                         
+
 Options:                                                                 
   -b, --baudrate INTEGER                                                 
   -s, --bytesize INTEGER                                                 
@@ -50,7 +75,23 @@ Options:
   --help                    Show this message and exit.                  
 ```
 
+
 # Example
+
+```
+$ docker run --device /dev/ttyUSB0 --user=root --rm -it rfquack-cli rfquack tty -P /dev/ttyUSB0
+
+...
+
+
+In [1]:  q.radioA.set_modem_config(modulation="OOK", carrierFreq=434.437, useCRC=False)
+2020-02-16 23:45:59 thinkpad rfquack.transport[31490] DEBUG b'rfquack/in/set/radioA/rfquack_ModemConfig/set_modem_config' (21 bytes)
+2020-02-16 23:45:59 thinkpad rfquack.transport[31490] DEBUG Message from module "b'radioA'"
+
+result = 0
+message = 3 changes applied and 0 failed.
+
+```
 
 ```
 $ rfquack mqtt -H localhost -P 1884
@@ -61,39 +102,17 @@ $ rfquack mqtt -H localhost -P 1884
 
 ...
 
-In [1]: q.rx()
-2019-04-10 18:04:45 local RFQuack[20877] DEBUG Setting mode to RX
-2019-04-10 18:04:45 local RFQuack[20877] DEBUG rfquack/in/set/status (2 bytes)
+In [1]: q.radioA.rx()
+2020-02-16 23:47:06 thinkpad rfquack.transport[31490] DEBUG b'rfquack/in/set/radioA/rfquack_VoidValue/rx' (0 bytes)
+2020-02-16 23:47:06 thinkpad rfquack.transport[31490] DEBUG Writing packet = b'>rfquack/in/set/radioA/rfquack_VoidValue/rx~\x00'
 
-In [2]: q.set_modem_config(modemConfigChoiceIndex=0, txPower=14, syncWords='', carrierFreq=433)
-2019-04-10 18:04:58 local RFQuack[20877] INFO txPower = 14
-2019-04-10 18:04:58 local RFQuack[20877] INFO modemConfigChoiceIndex = 0
-2019-04-10 18:04:58 local RFQuack[20877] INFO syncWords =
-2019-04-10 18:04:58 local RFQuack[20877] INFO carrierFreq = 433
-2019-04-10 18:04:58 local RFQuack[20877] DEBUG rfquack/in/set/modem_config (11 bytes)
+2020-02-16 23:47:06 thinkpad rfquack.transport[31490] DEBUG 2 bytes received on topic: "b'rfquack/out/set/radioA/rfquack_CmdReply/rx'" = "b'0800'"
+2020-02-16 23:47:06 thinkpad rfquack.transport[31490] DEBUG Message from module "b'radioA'"
 
-...
+result = 0
+message =
 
-In [73]: 2019-04-10 18:24:16 local RFQuack[20877] DEBUG Message on topic rfquack/out/status
-2019-04-10 18:24:16 local RFQuack[20877] DEBUG rfquack/out/status -> <class 'rfquack_pb2.Status'>: stats {
-  rx_packets: 0
-  tx_packets: 0
-  rx_failures: 0
-  tx_failures: 0
-  tx_queue: 0
-  rx_queue: 0
-}
-mode: IDLE
-modemConfig {
-  carrierFreq: 433.0
-  txPower: 14
-  isHighPowerModule: true
-  preambleLen: 4
-  syncWords: "CB"
-}
 ```
-
-The last message (i.e., on the `rfquack/out/status` topic) is automatically sent by the RFQuack dongle at first boot, and shows that the dongle is up and running, with some basic info about its status.
 
 At this point you're good to go from here!
 

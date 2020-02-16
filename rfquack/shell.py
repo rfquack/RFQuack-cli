@@ -36,6 +36,7 @@ class RFQuackShell(object):
     shell, through which the user can talk to the RFQuack dongle via a given
     transport.
     """
+
     def __init__(self, token, banner, transport):
         self._banner = banner
         self._transport = transport
@@ -53,11 +54,10 @@ class RFQuackShell(object):
 
         TerminalInteractiveShell.prompts_class = RFQuackShellPrompts
         shell = TerminalInteractiveShell()
-        shell.autocall = 2
+        shell.autocall = 0
         shell.show_banner(self._banner)
 
         q = RFQuack(self._transport, shell)
-        q.idle()
-        shell.push(dict(q=q, rfquack_pb2=rfquack_pb2))
+        shell.push(dict(q=q, pb=rfquack_pb2))
 
         shell.mainloop()
