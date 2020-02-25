@@ -93,13 +93,13 @@ class ModuleInterface(object):
         if value is None:
             return rfquack_pb2.VoidValue()
 
-        # First check if the attribute we want to set is a primitive type.
-        if isinstance(value, (bool, int, float)):
-            return rfq._make_payload(type, value=value)
-
         # If attribute is a Protubuf object we assume user knows what he's doing.
         if isinstance(value, Message):
             return value
+
+        # First check if the attribute we want to set is a primitive type.
+        if isinstance(value, (bool, int, float, bytes)):
+            return rfq._make_payload(type, value=value)
 
         # If attribute is a dict try to parse it.
         if isinstance(value, dict):

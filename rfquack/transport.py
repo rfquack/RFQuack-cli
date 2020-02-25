@@ -52,7 +52,7 @@ class RFQuackTransport(object):
     implementation of the RFQuack transport is on top of MQTT. Each topic is
     like a path, formed by three parts, split by a separator, usually a slash.
 
-        <prefix>/<way>/<set|get|unset>/<module_name>/<arg0>/<arg1>/...
+        <prefix>/<way>/<set|get|info>/<module_name>/<message_type>/<args>
 
     The <prefix> (e.g., rfquack) is used to distinguis correct messages.
 
@@ -64,14 +64,17 @@ class RFQuackTransport(object):
     The <get|set> part indicates whether a message is intended to set or get a
     value. The semantic of this part is implemented in the RFQuack firmware.
     For example, if we need to set a register to a value, we will use a topic
-    such as 'rfquack/in/set/<module_name>/<arg0>'.
+    such as 'rfquack/in/set/<module_name>/...'.
 
     The module name indicates which module should handle the command.
-    For example: 'rfquack/in/set/radio/<arg0>'
+    For example: 'rfquack/in/set/radio_module/....'
+
+    The message type indicates the protobuf type of the serialized message
+    For example: 'rfquack/in/set/radio_module/rfquack_Void'
 
     The args are optional and must be the last part, they add arguments
-    to the message.
-    Following the above example: 'rfquack/in/set/radio/power'
+    to the message, they are used as arguments for the module:
+    Following the above example: 'rfquack/in/set/radio_module/rfquack_Void/reset'
 
     Once a messaage is received, it is dispatched to the correct module,
     together with its payload, which must be deserialized according to the
@@ -88,7 +91,7 @@ class RFQuackTransport(object):
         try:
             prefix, way, verb, module_name, message_type, *cmds = topic.split(topics.TOPIC_SEP)
         except Exception:
-            logger.warning('Cannot parse topic: must be <prefix>/<way>/<verb>/<module_name>/<message_type>(/<cmd>)+')
+            logger.warning('Cannot parse topic: must be <prefix>/<way>/<verb>/<module_name>/<message_type>(/<args>)+')
             return
 
         logger.debug('Message from module "{}"'.format(module_name))

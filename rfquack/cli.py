@@ -51,7 +51,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option(
     '--loglevel', '-l',
     type=click.Choice(LOG_LEVELS),
-    default='DEBUG')
+    default='WARNING')
 def cli(loglevel):
     coloredlogs.install(level=loglevel)
 
