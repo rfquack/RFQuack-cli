@@ -10,4 +10,5 @@ COPY . .
 RUN python setup.py install
 
 # RUN :)
-CMD [ "rfquack", "--help" ]
+ENTRYPOINT ["rfquack"]
+CMD [ "--help" ]

@@ -9,17 +9,17 @@ First you need to clone the repo and build the container.
 ```bash
 $ git clone https://github.com/rfquack/RFQuack-cli
 $ cd RFQuack-cli
-$ docker build -t rfquack-cli .
+$ docker build -t rfquack/cli .
 ```
 
 Then you can connect to any WiFi dongle:
 ```bash
-$ docker run --rm -it rfquack-cli rfquack mqtt -H localhost -P 1884
+$ docker run --rm -it rfquack/cli mqtt -H localhost -P 1884
 ```
 
 or USB connected dongle:
 ```bash
-$ docker run --device /dev/ttyUSB0 --user=root --rm -it rfquack-cli rfquack tty -P /dev/ttyUSB0
+$ docker run --device /dev/ttyUSB0 --user=root --rm -it rfquack/cli tty -P /dev/ttyUSB0
 ```
 
 
@@ -79,7 +79,7 @@ Options:
 # Example
 
 ```
-$ docker run --device /dev/ttyUSB0 --user=root --rm -it rfquack-cli rfquack tty -P /dev/ttyUSB0
+$ docker run --device /dev/ttyUSB0 --user=root --rm -it rfquack/cli tty -P /dev/ttyUSB0
 
 ...
 
