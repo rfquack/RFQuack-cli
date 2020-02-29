@@ -128,7 +128,7 @@ class ModuleInterface(object):
             return None
 
         if attr_name not in self._help.keys():
-            self._print_help()
+            self.help()
             return "'{}' not found".format(attr_name)
 
         rfq = self._rfquack
