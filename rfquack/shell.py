@@ -58,6 +58,14 @@ class RFQuackShell(object):
         shell.show_banner(self._banner)
 
         q = RFQuack(self._transport, shell)
-        shell.push(dict(q=q, pb=rfquack_pb2))
+        shell_objs = dict(q=q, pb=rfquack_pb2)
+
+        # For each message field add a fake object with the same name,
+        # this to achieve a **very basic** autocomp.
+        for message_type in rfquack_pb2.DESCRIPTOR.message_types_by_name.values():
+            for message_field in message_type.fields:
+                shell_objs[message_field.name] = "This is a fake variable, used for autocompletion"
+
+        shell.push(shell_objs)
 
         shell.mainloop()
