@@ -45,52 +45,52 @@ BANNER = """
 
         ------------------------------------------------------------------------
 
-        > q.set_modem_config(               # set modem configuration
-            modemconfigchoiceindex=0,       # see radiohal documentation
-            txpower=14,                     # tx output power in db
-            syncwords=b'\\x43\\x42',        # sync words
-            carrierfreq=433)                # and of course, carrier frequency
+        > q.radioA.set_modem_config(
+                modulation="OOK",           # Set the modulation
+                carrierFreq=434.437,        # Set the frequency in MHz
+                bitRate=3.41296,            # Set the bitrate in KHz
+                useCRC=False,               # Whatever to use the integrated CRC
+                syncWords=b"\\x99\\x9A",      # Set the sync-words
+                rxBandwidth=58)             # Set the RX Bandwidth
+        
+        > q.radioA.set_packet_len(
+                isFixedPacketLen=True,      # Fixed packet mode 
+                packetLen=102)              # Len set to 102
 
-        > q.set_packet('\\x0d\\xa2', 13)    # transmit '0xd 0xa2' 13 times
-
-        > q.set_modem_config(               # set modem configuration
-            modemconfigchoiceindex=0,       # see radiohal documentation
-            txpower=14,                     # tx output power in db
-            syncwords='',                   # disable sync-word matching
-            carrierfreq=433)                # and of course, carrier frequency
-
+        > q.radioA.tx()                     # Enters TX mode.
+        
+        > q.radioA.send(
+            data=b"\\xAA\\xBB\\xCC")           # Sends a packet
+            
+            
                                             # example: with rfm69
                                             # -------------------
-        > q.set_register(                   #  truly promiscuous mode:
+        > q.radioA.set_register(            #  truly promiscuous mode:
             0x2e,                           #  1) set register 0x2e
             0b01000000                      #     to 0b01000000
             )                               #
-        > q.set_register(                   #
+    > q.radioA.set_register(                #
             0x37,                           #  2) set register 0x37
             0b01000000                      #     to 0b11000000
             )
 
-        > q.add_packet_filter(              # ignore packets
-            pattern="^ab[cd]"               # not matching this regex
+        > q.packet_filter.add               # ignore packets
+            pattern="^ab[cd]",              # not matching this regex
+            negateRule=False                # do not invert rule.
         )
 
-        > q.add_packet_modification(        # modify packets as follows:
+        > q.packet_modification.add(        # modify packets as follows:
             pattern="[ke]$",                #  if they end with 'k' or 'e'
             position=3,                     #  at position = 3 in the payload
-            content=b'\\x29',               #  and position = indexof(0x29)
+            content=b'\\x29',                #  and position = indexof(0x29)
             operation=2                     #  content[position] |= 0x25
             operand=b'\\x25'
         )
 
-        > q.repeat(10)                      # stay in rx and
-                                            # modify each matching packet
-                                            # transmit the result 10 times
-
-        > q.reset_packet_modifications()
-                                        # clear all packet modifications
 
         help:
-        > q.set_mode?                # tab is your friend
+        > q.packet_modification.help()      # use the helper function.
+        > q.?                               # tab is your friend
 
         exit:   just type ctrl-d a couple of times!
 """
