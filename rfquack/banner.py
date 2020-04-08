@@ -66,12 +66,12 @@ BANNER = """
                                             # example: with rfm69
                                             # -------------------
         > q.radioA.set_register(            #  truly promiscuous mode:
-            0x2e,                           #  1) set register 0x2e
-            0b01000000                      #     to 0b01000000
+            address=0x2e,                   #  1) set register 0x2e
+            value=0b01000000                #     to 0b01000000
             )                               #
     > q.radioA.set_register(                #
-            0x37,                           #  2) set register 0x37
-            0b01000000                      #     to 0b11000000
+            address=0x37,                   #  2) set register 0x37
+            value=0b01000000                #     to 0b11000000
             )
 
         > q.packet_filter.add               # ignore packets
