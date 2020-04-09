@@ -405,13 +405,16 @@ class RFQuackMQTTTransport(RFQuackTransport):
             self._client.username_pw_set(
                 self._username, self._password)
 
-        self._client.connect_async(
+        self._client.connect(
             self._mqtt.get('host'),
             self._mqtt.get('port')
         )
 
         logger.info('Transport initialized')
-
+        
+        # For unknown reasons, this function is not called asynchronously as it should
+        self._on_connect(None, None, None, None)
+        
         self._client.loop_start()
 
         self._ready = True
@@ -423,17 +426,17 @@ class RFQuackMQTTTransport(RFQuackTransport):
     def _on_connect(self, client, userdata, flags, rc):
         if self.DEFAULT_SUSCRIBE:
             self._client.subscribe(
-                self.DEFAULT_SUSCRIBE, qos=self.QOS)
+                self.DEFAULT_SUSCRIBE.decode("utf-8"), qos=self.QOS)
 
         logger.info('Connected to broker. Feed = {}'.format(
-            self.MQTT_DEFAULT_SUSCRIBE))
+            self.DEFAULT_SUSCRIBE))
 
     def _on_subscribe(self, client, userdata, mid, granted_qos):
         logger.info('Transport pipe initialized (QoS = {}): mid = {}'.format(
             granted_qos[0], mid))
 
     def _on_message(self, client, userdata, msg):
-        self._message_parser(msg.topic, msg.payload)
+        self._message_parser(msg.topic.encode("utf-8"), msg.payload)
 
     def _send(self, command, payload):
         topic = topics.TOPIC_SEP.join(
@@ -441,7 +444,7 @@ class RFQuackMQTTTransport(RFQuackTransport):
         logger.debug('{} ({} bytes)'.format(topic, len(payload)))
 
         self._client.publish(
-            topic,
+            topic.decode("utf-8"),
             payload=payload,
             qos=self.QOS,
             retain=self.RETAIN)
