@@ -54,7 +54,7 @@ class RFQuackTransport(object):
 
         <prefix>/<way>/<set|get|info>/<module_name>/<message_type>/<args>
 
-    The <prefix> (e.g., rfquack) is used to distinguis correct messages.
+    The <prefix> (e.g., rfquack) is used to distinguish correct messages.
 
     The direction, or <way> (e.g., in, out), indicates that indicates whether
     the message is inbound or outbound. Inbound messages are going from this
@@ -76,7 +76,7 @@ class RFQuackTransport(object):
     to the message, they are used as arguments for the module:
     Following the above example: 'rfquack/in/set/radio_module/rfquack_Void/reset'
 
-    Once a messaage is received, it is dispatched to the correct module,
+    Once a message is received, it is dispatched to the correct module,
     together with its payload, which must be deserialized according to the
     right Protobuf message class.
     """
