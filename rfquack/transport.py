@@ -96,10 +96,8 @@ class RFQuackTransport(object):
 
         logger.debug('Message from module "{}"'.format(module_name))
 
-        if prefix != topics.TOPIC_PREFIX:
-            logger.warning(
-                'Invalid prefix: {} should be {}'
-                    .format(prefix, topics.TOPIC_PREFIX))
+        if prefix != self._prefix and self._prefix != topics.TOPIC_PREFIX_ANY:
+            logger.warning('Invalid prefix: {} should be {}'.format(prefix, self._prefix))
             return
 
         if way != topics.TOPIC_OUT:
@@ -121,8 +119,11 @@ class RFQuackTransport(object):
             return
 
         if self._on_message_callback:
-            self._on_message_callback(verb=verb.decode(), module_name=module_name.decode(),
+            self._on_message_callback(prefix=prefix.decode(), verb=verb.decode(), module_name=module_name.decode(),
                                       cmds=list(map(lambda x: x.decode(), cmds)), msg=pb_msg)
+
+    def set_on_message_callback(self, on_message_callback):
+        self._on_message_callback = on_message_callback
 
     def _send(self, command, payload):
         raise NotImplementedError()
@@ -318,9 +319,11 @@ class RFQuackSerialTransport(RFQuackTransport):
         self.kwargs = kwargs
         self.ser = None
         self._on_message_callback = None
+        self._prefix = topics.TOPIC_PREFIX_ANY
 
     def init(self, *args, **kwargs):
         self._on_message_callback = kwargs.get('on_message_callback')
+        self._prefix = kwargs.get('prefix')
         self.ser = serial.Serial(**self.kwargs)
 
         class _RFQuackSerialProtocol(RFQuackSerialProtocol):
@@ -333,6 +336,9 @@ class RFQuackSerialTransport(RFQuackTransport):
         self._reader.start()
         self._transport, self._protocol = self._reader.connect()
         self._ready = True
+
+    def set_prefix(self, prefix):
+        self._prefix = prefix.encode()
 
     def debug(self):
         self._protocol._debug = True
@@ -352,8 +358,7 @@ class RFQuackSerialTransport(RFQuackTransport):
         self._reader.stop()
 
     def _send(self, command, payload):
-        topic = topics.TOPIC_SEP.join(
-            (topics.TOPIC_PREFIX, topics.TOPIC_IN, command))
+        topic = topics.TOPIC_SEP.join((self._prefix, topics.TOPIC_IN, command))
         logger.debug('{} ({} bytes)'.format(topic, len(payload)))
         # logger.debug('payload = {}'.format(hexelify(bytearray(payload))))
 
@@ -371,12 +376,6 @@ class RFQuackMQTTTransport(RFQuackTransport):
     QOS = 2
     RETAIN = False
 
-    DEFAULT_SUSCRIBE = topics.TOPIC_SEP.join((
-        topics.TOPIC_PREFIX,
-        topics.TOPIC_OUT,
-        b'#'
-    ))  # subscribe to all, dispatch later
-
     def __init__(
             self, client_id, username=None, password=None, host='localhost',
             port=1883):
@@ -392,6 +391,7 @@ class RFQuackMQTTTransport(RFQuackTransport):
             userdata=self._userdata)
         self._ready = False
         self._on_packet = None
+        self._prefix = topics.TOPIC_PREFIX_ANY
 
     def init(self, *args, **kwargs):
         self._client.on_message = self._on_message
@@ -419,28 +419,48 @@ class RFQuackMQTTTransport(RFQuackTransport):
 
         self._ready = True
 
+    def get_subscribe_url(self, topic_prefix):
+        # "any" in MQTT world is matched to a '+'
+        if topic_prefix is topics.TOPIC_PREFIX_ANY:
+            return topics.TOPIC_SEP.join((
+                b'+',
+                topics.TOPIC_OUT,
+                b'#'
+            )).decode()
+
+        return topics.TOPIC_SEP.join((
+            topic_prefix,
+            topics.TOPIC_OUT,
+            b'#'
+        )).decode()
+
+    def set_prefix(self, prefix):
+        # Unsubscribe from old topic
+        self._client.unsubscribe(self.get_subscribe_url(self._prefix))
+
+        self._prefix = prefix.encode()
+
+        # Subscribe to new one
+        url = self.get_subscribe_url(self._prefix)
+        self._client.subscribe(url, qos=self.QOS)
+
     def end(self):
         self._ready = False
         self._client.loop_stop()
 
     def _on_connect(self, client, userdata, flags, rc):
-        if self.DEFAULT_SUSCRIBE:
-            self._client.subscribe(
-                self.DEFAULT_SUSCRIBE.decode("utf-8"), qos=self.QOS)
-
-        logger.info('Connected to broker. Feed = {}'.format(
-            self.DEFAULT_SUSCRIBE))
+        url = self.get_subscribe_url(self._prefix)
+        self._client.subscribe(url, qos=self.QOS)
+        logger.info('Connected to broker. Feed = {}'.format(url))
 
     def _on_subscribe(self, client, userdata, mid, granted_qos):
-        logger.info('Transport pipe initialized (QoS = {}): mid = {}'.format(
-            granted_qos[0], mid))
+        logger.info('Transport pipe initialized (QoS = {}): mid = {}'.format(granted_qos[0], mid))
 
     def _on_message(self, client, userdata, msg):
         self._message_parser(msg.topic.encode("utf-8"), msg.payload)
 
     def _send(self, command, payload):
-        topic = topics.TOPIC_SEP.join(
-            (topics.TOPIC_PREFIX, topics.TOPIC_IN, command))
+        topic = topics.TOPIC_SEP.join((self._prefix, topics.TOPIC_IN, command))
         logger.debug('{} ({} bytes)'.format(topic, len(payload)))
 
         self._client.publish(

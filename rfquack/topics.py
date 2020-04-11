@@ -30,7 +30,7 @@ TOPIC_MODULE_PACKET_MODIFICATION = b"packet_modification"
 TOPIC_MODULE_PACKET_FILTER = b"packet_filter"
 
 
-TOPIC_PREFIX = b"rfquack"
+TOPIC_PREFIX_ANY = b"any"
 TOPIC_SEP = b"/"
 TOPIC_IN = b"in"
 TOPIC_OUT = b"out"
