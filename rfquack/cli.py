@@ -78,7 +78,8 @@ def mqtt(client_id, host, port, username, password):
     s = RFQuackShell(
         'RFQuack({}, {}:{})'.format(client_id, host, port),
         BANNER,
-        transport)
+        transport,
+        False)
     s()
 
 
@@ -123,10 +124,11 @@ def tty(baudrate, bytesize, parity, stopbits, timeout, port):
 
     transport = RFQuackSerialTransport(**kwargs)
     s = RFQuackShell(
-            'RFQuack({}, {},{},{},{})'.format(
-                port, baudrate, bytesize, parity, stopbits),
-            BANNER,
-            transport)
+        'RFQuack({})'.format(
+            port),
+        BANNER,
+        transport,
+        True)
 
     s()
 

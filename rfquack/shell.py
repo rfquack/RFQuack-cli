@@ -37,10 +37,11 @@ class RFQuackShell(object):
     transport.
     """
 
-    def __init__(self, token, banner, transport):
+    def __init__(self, token, banner, transport, select_first_dongle):
         self._banner = banner
         self._transport = transport
         self._token = token
+        self._select_first_dongle = select_first_dongle;
 
     def __call__(self):
         from IPython.terminal.prompts import Prompts, Token
@@ -57,7 +58,7 @@ class RFQuackShell(object):
         shell.autocall = 0
         shell.show_banner(self._banner)
 
-        q = RFQuack(self._transport, shell)
+        q = RFQuack(self._transport, "rfquack", shell, self._select_first_dongle)
         shell_objs = dict(q=q, pb=rfquack_pb2)
 
         # For each message field add a fake object with the same name,

@@ -141,18 +141,58 @@ class RFQuack(object):
     invocation of commands to the RFQuack dongle by means of function calls.
     """
 
-    def __init__(self, transport, shell):
+    def __init__(self, transport, prefix, shell, select_first_dongle):
         self._transport = transport
         self._shell = shell
 
         self.data = list()
+        self._prefix = prefix
         self.lastReply = {}
+        self._spectrum_analyzer = dict()
+        self._module_names = list()
+
+        self._dongles = dict()
+        self._select_first_dongle = select_first_dongle
+
         self._init()
 
     def _init(self):
-        self._transport.init(on_message_callback=self._recv)
+        self._transport.init(on_message_callback=self._discovery_recv, prefix=topics.TOPIC_PREFIX_ANY)
+        sys.stdout.write(
+            '\n\n'
+            '  Select a dongle typing: q.dongle(id)')
+        self._set_module_value("ping", "ping", rfquack_pb2.VoidValue())
 
-        # Ask RFQuack info about its configuration.
+    def _discovery_recv(self, **kwargs):
+        dongle_prefix = kwargs.get('prefix')
+        id = len(self._dongles)
+        self._dongles[id] = dongle_prefix
+        sys.stdout.write(' - Dongle {}: {}\n'.format(id, dongle_prefix))
+
+        # If select_first_dongle then automatically select the first received dongle.
+        if self._select_first_dongle:
+            self.dongle(id)
+
+    def dongle(self, id):
+        dongle_prefix = self._dongles.get(id)
+
+        if dongle_prefix is None:
+            sys.stdout.write('Wrong dongle id')
+            return
+
+        sys.stdout.write('\n > You have selected dongle {}: {}\n\n'.format(id, dongle_prefix))
+
+        # Delete any previously autoloaded module.
+        for module_name in self._module_names:
+            delattr(self, module_name)
+
+        # Listen for the new dongle prefix
+        self._transport.set_prefix(dongle_prefix)
+
+        # Change the incoming messages handler.
+        self._transport.set_on_message_callback(self._recv)
+
+        # Ask info on the 'TOPIC_INFO', the dongle will reply back with the loaded modules
         self._transport._send(
             command=topics.TOPIC_INFO,
             payload=b'')
@@ -169,6 +209,7 @@ class RFQuack(object):
         if verb == topics.TOPIC_INFO.decode():
             # Create a new attribute if missing.
             if not hasattr(self, module_name):
+                self._module_names.append(module_name)
                 logger.info("Creating attribute q.{}".format(module_name))
                 setattr(self, module_name, ModuleInterface(self, module_name))
 
