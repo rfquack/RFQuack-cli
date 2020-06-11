@@ -62,16 +62,22 @@ def cli(loglevel):
 @click.option('--port', '-P', type=int, default=1883)
 @click.option('--username', '-u')
 @click.option('--password', '-p')
-def mqtt(client_id, host, port, username, password):
+@click.option('--certificate_authority', '-a')
+@click.option('--certificate', '-c')
+@click.option('--private_key', '-k')
+def mqtt(client_id, host, port, username, password, certificate_authority, certificate, private_key):
     '''
-    RFQuack client with MQTT transport. Assumes one dongle per MQTT broker.
+    RFQuack client with MQTT transport.
     '''
     kwargs = dict(
             client_id=client_id,
             host=host,
             port=port,
             username=username,
-            password=password)
+            password=password,
+            certificate_authority=certificate_authority,
+            certificate=certificate,
+            private_key=private_key)
 
     transport = RFQuackMQTTTransport(**kwargs)
 

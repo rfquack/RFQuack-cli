@@ -369,16 +369,13 @@ class RFQuackMQTTTransport(RFQuackTransport):
     """
     MQTT transport implements the RFQuack protocol by mapping topics and
     payloads onto valid MQTT messages.
-
-    * TODO dispatch nodes by client-id so that multiple dongles can share the
-    same broker
     """
     QOS = 2
     RETAIN = False
 
     def __init__(
-            self, client_id, username=None, password=None, host='localhost',
-            port=1883):
+            self, client_id, username=None, password=None, host='localhost', port=1883,
+            certificate_authority=None, certificate=None, private_key=None):
 
         self._userdata = {}
         self._username = username
@@ -389,6 +386,11 @@ class RFQuackMQTTTransport(RFQuackTransport):
         self._client = paho_mqtt.Client(
             client_id=client_id,
             userdata=self._userdata)
+
+        if certificate_authority:
+            self.QOS = 1
+            self._client.tls_set(ca_certs=certificate_authority, certfile=certificate, keyfile=private_key)
+
         self._ready = False
         self._on_packet = None
         self._prefix = topics.TOPIC_PREFIX_ANY
@@ -411,9 +413,6 @@ class RFQuackMQTTTransport(RFQuackTransport):
         )
 
         logger.info('Transport initialized')
-
-        # For unknown reasons, this function is not called asynchronously as it should
-        self._on_connect(None, None, None, None)
 
         self._client.loop_start()
 
