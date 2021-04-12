@@ -2,7 +2,6 @@
 
 from setuptools import setup
 
-DEPENDENCIES = open('requirements.pip', 'r').read().split('\n')
 README = open('README.md', 'r').read()
 
 setup(
@@ -15,7 +14,6 @@ setup(
     url='http://github.com/rfquack/RFQuack-cli',
     packages=['rfquack'],
     entry_points={'console_scripts': ['rfquack=rfquack.cli:main']},
-    install_requires=DEPENDENCIES,
     keywords=['rf', 'radio'],
     classifiers=[
       'Development Status :: 3 - Alpha',
