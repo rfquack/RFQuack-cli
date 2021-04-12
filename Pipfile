@@ -12,8 +12,7 @@ paho-mqtt = "*"
 coloredlogs = "*"
 colorama = "*"
 protobuf = "*"
-rfquack = {editable = true,path = "."}
 ipython = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.9"
