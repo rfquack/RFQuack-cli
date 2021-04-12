@@ -5,6 +5,7 @@ Command line interface client to [RFQuack](https://github.com/trendmicro/RFQuack
 - [RFQuack Command Line Interface Client](#rfquack-command-line-interface-client)
   - [Installation](#installation)
     - [Docker](#docker)
+      - [Build Docker image](#build-docker-image)
     - [Manual Installation](#manual-installation)
   - [Basic Usage](#basic-usage)
   - [Example](#example)
@@ -13,11 +14,11 @@ Command line interface client to [RFQuack](https://github.com/trendmicro/RFQuack
 
 ## Installation
 
-RFQuack-cli can be used as a __docker container__ or __installed from sources__
+RFQuack-cli can be used within a Docker container or installed from source.
 
 ### Docker
 
-Connect to any WiFi dongle:
+For example, to connect to a WiFi dongle:
 
 ```bash
 $ docker run --rm -it rfquack/cli mqtt -H <mqttBroker> -P 1884
@@ -30,6 +31,11 @@ or any USB connected dongle:
 $ docker run --device /dev/ttyUSB0 --user=root --rm -it \
   rfquack/cli tty -P /dev/ttyUSB0
 ...
+```
+
+#### Build Docker image
+```bash
+$ make docker-build
 ```
 
 ### Manual Installation
