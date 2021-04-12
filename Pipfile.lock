@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "a552bfc1b0a781c40d06a91655b1e6411628d94e7a72b6d457a7d16cca7ee32c"
+            "sha256": "0c255ca4f9bc0c13333a3a109b279a86f3c2e3b2e1a20b8c67b7394e1d809177"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -180,6 +180,10 @@
             ],
             "index": "pypi",
             "version": "==3.5"
+        },
+        "rfquack": {
+            "editable": true,
+            "path": "."
         },
         "six": {
             "hashes": [

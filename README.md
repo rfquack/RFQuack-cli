@@ -49,6 +49,7 @@ $ pipenv install -e .
 ## Basic Usage
 
 ```bash
+$ pipenv shell  # use pipenv shell or activate whatever virtual env system you're using
 $ rfquack --help
 Usage: rfq.py [OPTIONS] COMMAND [ARGS]...
 
