@@ -43,7 +43,7 @@ $ make docker-build
 ```bash
 $ git clone https://github.com/rfquack/RFQuack-cli
 cd RFQuack-cli
-$ pipenv install -e .
+$ pipenv run pip install -e .
 ```
 
 ## Basic Usage
